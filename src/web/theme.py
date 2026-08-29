@@ -384,8 +384,18 @@ def md_safe(text: str) -> str:
 
 
 def inject(st) -> None:
-    """Apply the stylesheet and icon links. Call once, immediately after set_page_config."""
-    st.markdown(favicon_links() + CSS, unsafe_allow_html=True)
+    """Apply the stylesheet and icon links. Call once, immediately after set_page_config.
+
+    The stylesheet goes through ``st.html``, not ``st.markdown``. Markdown treats the
+    injected string as a raw HTML block that *ends at the first blank line*, so everything
+    in the stylesheet after that blank line was parsed as prose and printed on the page as
+    visible CSS text. ``st.html`` is not markdown-parsed - the style element survives whole,
+    and Streamlit routes style-only content to the event container so it takes no layout
+    space. The icon links stay on ``st.markdown``: they are a single line with no blank
+    line to trip over, and ``st.html`` sanitisation drops <link>.
+    """
+    st.markdown(favicon_links(), unsafe_allow_html=True)
+    st.html(CSS)
 
 
 def brand(st) -> None:

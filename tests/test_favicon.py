@@ -76,15 +76,39 @@ def test_the_icon_links_use_the_served_static_path():
 
 def test_the_links_are_injected_with_the_stylesheet():
     """inject() is the single call the app makes, so the links must ride along with it."""
-    captured: list[str] = []
+    markdown: list[str] = []
+    html: list[str] = []
 
     class _Stub:
         def markdown(self, body, **_kwargs):
-            captured.append(body)
+            markdown.append(body)
+
+        def html(self, body, **_kwargs):
+            html.append(body)
 
     theme.inject(_Stub())
-    assert captured and "/app/static/favicon.png" in captured[0]
-    assert "<style>" in captured[0]
+    assert markdown and "/app/static/favicon.png" in markdown[0]
+    assert html and "<style>" in html[0]
+
+
+def test_the_stylesheet_does_not_go_through_markdown():
+    """Markdown ends a raw HTML block at the first blank line, which printed the CSS
+    on the page as text. The stylesheet must be sent with st.html instead."""
+    markdown: list[str] = []
+    html: list[str] = []
+
+    class _Stub:
+        def markdown(self, body, **_kwargs):
+            markdown.append(body)
+
+        def html(self, body, **_kwargs):
+            html.append(body)
+
+    theme.inject(_Stub())
+    assert not any("<style>" in body for body in markdown)
+    blank_line = chr(10) * 2
+    assert blank_line not in "".join(markdown), "a blank line would end the HTML block"
+    assert theme.CSS in html
 
 
 def test_static_serving_is_enabled_for_the_public_directory():
