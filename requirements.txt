@@ -1,0 +1,32 @@
+# Core
+pydantic>=2.7
+python-dotenv>=1.0
+
+# Document ingestion
+pdfplumber>=0.11
+pymupdf>=1.24
+python-pptx>=1.0
+python-docx>=1.1
+openpyxl>=3.1
+pandas>=2.2
+
+# Reporting
+reportlab>=4.1
+pypdf>=4.0
+
+# Interfaces
+streamlit>=1.35
+typer>=0.12
+rich>=13.7
+
+# LLM providers (optional at runtime; the app runs without either)
+anthropic>=0.40
+openai>=1.40
+
+# Public research mode (optional)
+requests>=2.32
+
+# Dev only. Installed in the image too - they add about 10 MB and keep one
+# requirements file rather than two that drift apart.
+pytest>=8.0
+pytest-cov>=5.0

@@ -1,0 +1,31 @@
+[project]
+name = "lead-investor-map"
+version = "1.0.0"
+description = "One-page Lead Investor Map from a pitch deck and investor materials"
+requires-python = ">=3.11"
+
+[tool.ruff]
+# Code is formatted at 100 columns (`ruff format --line-length 100`). The lint limit
+# is a little looser so a user-facing sentence or a regex a few characters over is not
+# broken up for the sake of it.
+line-length = 110
+target-version = "py311"
+extend-exclude = ["venv", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    # Quoted forward references are kept for readability in the Pydantic models.
+    "UP037",
+    # `class X(str, Enum)` is deliberate: it is what Pydantic v2 serialises most
+    # predictably, and it is consistent across every enum in the domain models.
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

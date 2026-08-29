@@ -1,0 +1,29 @@
+# Server settings for a containerised deployment behind Railway's proxy.
+
+[server]
+headless = true
+address = "0.0.0.0"
+# Railway terminates TLS at its edge and proxies over HTTP, so Streamlit's own XSRF and
+# CORS checks fight the proxy rather than protecting anything. Access is gated by
+# APP_PASSWORD instead.
+enableCORS = false
+enableXsrfProtection = false
+maxUploadSize = 64
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+# The screen is dark TEN Capital navy; the PDF it produces stays white and
+# institutional, because that is what gets printed and forwarded.
+[theme]
+base = "dark"
+primaryColor = "#EE5A4E"
+backgroundColor = "#0B1526"
+secondaryBackgroundColor = "#101E33"
+textColor = "#F3F6FA"
+font = "sans serif"
+
+[client]
+showErrorDetails = false
+toolbarMode = "minimal"
