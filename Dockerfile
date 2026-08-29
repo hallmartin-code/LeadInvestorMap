@@ -22,6 +22,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY src ./src
 COPY app.py pyproject.toml README.md ./
 COPY .streamlit ./.streamlit
+COPY static ./static
 COPY sample_data/make_samples.py ./sample_data/make_samples.py
 
 # Outputs are written per request into a temporary directory; this is only a fallback.

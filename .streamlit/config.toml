@@ -10,6 +10,9 @@ enableCORS = false
 enableXsrfProtection = false
 maxUploadSize = 64
 fileWatcherType = "none"
+# Serves ./static at /app/static - the project's public directory, where the favicon
+# and touch icon live.
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

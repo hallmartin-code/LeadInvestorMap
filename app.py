@@ -330,7 +330,7 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
 
     st.set_page_config(
         page_title="Lead Investor Map | TEN Capital Network",
-        page_icon="::",
+        page_icon=theme.page_icon(),
         layout="wide",
     )
     theme.inject(st)

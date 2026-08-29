@@ -99,6 +99,12 @@ and a dark deliverable would be worse at that job. Screen styling lives in
 notification address are all read from configuration, so the page can never promise
 something the app would refuse.
 
+The browser tab carries the TEN Capital circular mark. The icon set lives in
+[static/](static/) - the project's public directory, which Streamlit serves at
+`/app/static` - and is referenced both through `st.set_page_config(page_icon=...)`
+and explicit `<link rel="icon">` tags covering the `.ico` and the iOS touch icon.
+To change it, replace `static/favicon.png` and regenerate the other two sizes.
+
 ### Command line
 
 ```bash
@@ -275,9 +281,10 @@ src/
   reporting/               one-page PDF renderer, fitting ladder, blank template, exporters
   notifications/           Resend email delivery of each finished run
   web/                     TEN Capital screen styling for the Streamlit app
+static/                    public directory: favicon and touch icon, served at /app/static
   llm/                     provider-independent interface, prompts, response schemas
   utils/                   config, logging, money, dates, text, validation
-tests/                     230 tests, including the seven-trap scenario
+tests/                     242 tests, including the seven-trap scenario
 docs/                      the document structure template and its specification
 sample_data/               synthetic deck, target list and notes
 ```
@@ -319,7 +326,7 @@ the page.
 ## Testing
 
 ```bash
-python -m pytest -q                       # 230 tests
+python -m pytest -q                       # 242 tests
 python -m pytest -q --cov=src             # with coverage
 ```
 

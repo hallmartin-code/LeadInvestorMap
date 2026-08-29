@@ -18,6 +18,7 @@ Two rules govern what is here:
 from __future__ import annotations
 
 from contextlib import contextmanager
+from pathlib import Path
 
 from ..ingestion.loader import DECK_EXTENSIONS, SUPPORTED_EXTENSIONS
 from ..utils.config import EmailSettings, max_upload_mb
@@ -303,6 +304,41 @@ hr{ border-color:var(--navy-700); }
 """.replace("FONT_URL", FONTS)
 
 
+# --- favicon -----------------------------------------------------------------------------
+
+#: The project's public directory. Streamlit serves it at /app/static when
+#: enableStaticServing is on, which is how the browser reaches these files.
+STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
+STATIC_URL = "/app/static"
+
+FAVICON_PNG = STATIC_DIR / "favicon.png"
+FAVICON_ICO = STATIC_DIR / "favicon.ico"
+APPLE_TOUCH_ICON = STATIC_DIR / "apple-touch-icon.png"
+
+
+def page_icon():
+    """The tab icon for st.set_page_config.
+
+    Streamlit accepts a path or a PIL image. If the file is missing for any reason the
+    app must still start, so this falls back to an emoji rather than raising at import.
+    """
+    return str(FAVICON_PNG) if FAVICON_PNG.exists() else ":bar_chart:"
+
+
+def favicon_links() -> str:
+    """Explicit icon links.
+
+    Streamlit sets its own favicon from page_icon, but that single PNG does not cover the
+    .ico that some browsers and Windows pinned tabs still ask for, nor the iOS
+    home-screen icon. These are additive and harmless where unused.
+    """
+    return (
+        f'<link rel="icon" type="image/png" sizes="512x512" href="{STATIC_URL}/favicon.png">'
+        f'<link rel="alternate icon" type="image/x-icon" href="{STATIC_URL}/favicon.ico">'
+        f'<link rel="apple-touch-icon" sizes="180x180" href="{STATIC_URL}/apple-touch-icon.png">'
+    )
+
+
 # --- content that must track the application, not the markup -------------------------------
 
 
@@ -348,8 +384,8 @@ def md_safe(text: str) -> str:
 
 
 def inject(st) -> None:
-    """Apply the stylesheet. Call once, immediately after set_page_config."""
-    st.markdown(CSS, unsafe_allow_html=True)
+    """Apply the stylesheet and icon links. Call once, immediately after set_page_config."""
+    st.markdown(favicon_links() + CSS, unsafe_allow_html=True)
 
 
 def brand(st) -> None:
