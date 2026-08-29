@@ -45,6 +45,14 @@ BRAND_MARK = """
 </svg>
 """
 
+#: A Streamlit widget cannot live inside an injected <div>, so the card is a bordered
+#: st.container matched by a marker inside it. The selector is written once here and
+#: substituted into the stylesheet rather than repeated at every rule that needs it.
+CARD = (
+    '[data-testid="stVerticalBlock"]'
+    ':has(> [data-testid="stElementContainer"] .tc-card-marker)'
+)
+
 CSS = """
 <style>
 @import url('FONT_URL');
@@ -86,7 +94,12 @@ CSS = """
 }
 .stApp > *{ position:relative; z-index:1; }
 
-.block-container{ padding-top:2.6rem; padding-bottom:3rem; max-width:1000px; }
+.block-container{
+  padding-top:2.6rem; padding-bottom:3rem;
+  max-width:1000px;
+  /* The mockup is one centred column; a max-width on its own would pin it left. */
+  margin-left:auto; margin-right:auto;
+}
 
 /* Streamlit ships its own font rules; these are deliberately specific enough to win
    rather than relying on source order. */
@@ -103,6 +116,7 @@ CSS = """
 .stApp [data-testid="stFileUploader"] label, .stApp [data-testid="stMetricLabel"]{
   font-family:'JetBrains Mono', monospace !important;
 }
+
 p, li, label, span, div{ color:var(--ink-300); }
 
 /* --- brand lockup --------------------------------------------------------------- */
@@ -120,19 +134,17 @@ p, li, label, span, div{ color:var(--ink-300); }
 
 /* --- card ----------------------------------------------------------------------- */
 
-.tc-card,
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .tc-card-marker){
+%CARD%{
   background: linear-gradient(180deg, var(--navy-900) 0%, var(--navy-800) 100%);
   border:1px solid var(--navy-700);
   border-radius:20px;
-  padding:40px 44px 34px;
+  padding:44px 44px 36px;
   box-shadow:0 30px 60px -20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03);
   position:relative;
   overflow:hidden;
   margin-bottom:26px;
 }
-.tc-card::after,
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .tc-card-marker)::after{
+%CARD%::after{
   content:"";
   position:absolute; top:0; left:44px; right:44px; height:2px;
   background: linear-gradient(90deg, var(--coral), var(--amber), var(--teal));
@@ -141,25 +153,32 @@ p, li, label, span, div{ color:var(--ink-300); }
 
 .tc-eyebrow{
   display:flex; align-items:center; gap:8px;
-  font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.14em;
-  text-transform:uppercase; color:var(--teal); margin-bottom:14px;
+  font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:500;
+  letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--teal); margin:0 0 14px;
 }
 .tc-eyebrow::before{
-  content:""; width:6px; height:6px; border-radius:50%;
+  content:""; width:6px; height:6px; border-radius:50%; flex-shrink:0;
   background:var(--teal); box-shadow:0 0 0 3px rgba(53,190,187,0.18);
 }
 
-.tc-card h1,
-[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .tc-card-marker) h1{
-  font-size:28px; font-weight:700; line-height:1.25; margin:0 0 12px;
-}
+/* Half the width cannot carry the full inset. */
+[data-testid="stColumn"] %CARD%{ padding:28px 28px 24px; }
+[data-testid="stColumn"] %CARD%::after{ left:28px; right:28px; }
+
+%CARD% h1{ font-size:28px; font-weight:700; line-height:1.25; margin:0 0 12px; }
 .tc-card-marker{ display:none; }
-.tc-card h1 .arrow{ color:var(--ink-500); font-weight:400; margin:0 6px; }
-.tc-card h1 .to{
+h1 .arrow{ color:var(--ink-500); font-weight:400; margin:0 4px; }
+h1 .to{
   background: linear-gradient(90deg, var(--coral-soft), var(--amber));
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-.tc-lede{ color:var(--ink-300); font-size:15px; line-height:1.6; margin:0; max-width:56ch; }
+/* Clipping the gradient to the glyphs leaves the text invisible where the property is
+   unsupported, so the accent colour is restored rather than the heading disappearing. */
+@supports not ((background-clip:text) or (-webkit-background-clip:text)){
+  h1 .to{ color:var(--coral-soft); }
+}
+.tc-lede{ color:var(--ink-300); font-size:15px; line-height:1.6; margin:0 0 6px; max-width:56ch; }
 
 /* --- upload zones ---------------------------------------------------------------- */
 
@@ -172,7 +191,7 @@ p, li, label, span, div{ color:var(--ink-300); }
   border:1.5px dashed var(--navy-700);
   border-radius:14px;
   background:rgba(255,255,255,0.015);
-  padding:26px 22px;
+  padding:24px 22px;
   transition:border-color .18s ease, background .18s ease;
 }
 [data-testid="stFileUploaderDropzone"]:hover{
@@ -193,16 +212,28 @@ p, li, label, span, div{ color:var(--ink-300); }
 [data-testid="stFileUploaderDropzone"] button:hover{
   border-color:var(--teal); color:var(--ink-100);
 }
-[data-testid="stFileUploaderDropzone"] small,
 [data-testid="stFileUploaderDropzone"] span{ color:var(--ink-500); }
+/* Streamlit prints the accepted types and the size ceiling inside every dropzone, and
+   truncates the longer list to an ellipsis. The page says it once instead, under both
+   zones and in full, in the mockup's mono sub-line - see hint(). */
+[data-testid="stFileUploaderDropzoneInstructions"]{ display:none; }
+
+.tc-hint{
+  font-family:'JetBrains Mono', monospace !important;
+  font-size:11.5px; letter-spacing:0.01em; color:var(--ink-500);
+  margin:10px 2px 0;
+}
+.tc-hint b{ color:var(--ink-300); font-weight:500; }
 
 /* --- buttons ---------------------------------------------------------------------- */
 
+/* Streamlit sizes a button's container to its label unless the widget asks to stretch;
+   the buttons here pass width="stretch", and this fills that container. */
 .stButton > button, .stDownloadButton > button{
   width:100%;
   border:none;
   border-radius:12px;
-  padding:14px 20px;
+  padding:16px 20px;
   font-family:'Sora', sans-serif; font-weight:700; font-size:15px;
   transition:filter .15s ease, transform .15s ease;
 }
@@ -213,6 +244,17 @@ p, li, label, span, div{ color:var(--ink-300); }
 }
 .stButton > button[kind="primary"]:hover{ filter:brightness(1.06); transform:translateY(-1px); }
 .stButton > button[kind="primary"]:active{ transform:translateY(0); }
+/* The button is disabled until a deck is chosen. The gradient reads as "ready", so it
+   has to be visibly withdrawn or the page invites a click it will refuse. */
+.stButton > button[kind="primary"]:disabled,
+.stButton > button[kind="primary"]:disabled:hover{
+  background:rgba(255,255,255,0.04);
+  color:var(--ink-600);
+  box-shadow:none;
+  filter:none;
+  transform:none;
+  cursor:not-allowed;
+}
 .stButton > button[kind="primary"]:focus-visible,
 .stDownloadButton > button:focus-visible{
   outline:2px solid var(--teal); outline-offset:2px;
@@ -252,7 +294,19 @@ p, li, label, span, div{ color:var(--ink-300); }
   background:rgba(255,255,255,0.02);
   border:1px solid var(--navy-700);
   border-radius:12px;
-  padding:14px 16px;
+  padding:14px 14px;
+  /* A wrapped cheque range makes one tile taller than its neighbours; stretching them
+     keeps the row a row. The same rule squares up two cards sitting side by side. */
+  height:100%;
+}
+/* Streamlit stretches the columns themselves but not what sits inside them, so a metric
+   whose value wraps to two lines leaves its neighbours short and the row ragged. The
+   height is handed down the chain to the tile. Cards in columns are deliberately left
+   alone: stretching a short one to match a long list is a hole, not an alignment. */
+[data-testid="stColumn"]{ display:flex; flex-direction:column; }
+[data-testid="stColumn"]:has([data-testid="stMetric"]) > [data-testid="stVerticalBlock"],
+[data-testid="stColumn"] [data-testid="stElementContainer"]:has(> [data-testid="stMetric"]){
+  flex:1 1 auto;
 }
 [data-testid="stMetricLabel"]{
   font-family:'JetBrains Mono', monospace; font-size:10px !important;
@@ -260,8 +314,21 @@ p, li, label, span, div{ color:var(--ink-300); }
 }
 [data-testid="stMetricValue"]{
   font-family:'Sora', sans-serif; font-size:18px !important; color:var(--ink-100) !important;
-  /* A cheque range is wider than a stage name; let it wrap rather than be clipped. */
-  white-space:normal; overflow-wrap:anywhere; line-height:1.25;
+  line-height:1.25;
+}
+/* A cheque range is the widest thing on the row and the first thing Streamlit ellipsises,
+   so the one-line clamp is lifted from both the label and the value. Money that reads
+   "$3.4M-$6..." is worse than money on two lines. */
+[data-testid="stMetricLabel"], [data-testid="stMetricValue"],
+[data-testid="stMetricLabel"] > div, [data-testid="stMetricValue"] > div,
+[data-testid="stMetricLabel"] [data-testid="stMarkdownContainer"],
+[data-testid="stMetricValue"] [data-testid="stMarkdownContainer"],
+[data-testid="stMetricLabel"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stMetricValue"] [data-testid="stMarkdownContainer"] p{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
 }
 
 [data-testid="stDataFrame"]{ border:1px solid var(--navy-700); border-radius:12px; }
@@ -273,7 +340,7 @@ hr{ border-color:var(--navy-700); }
 /* --- disclosure and footer ------------------------------------------------------------ */
 
 .tc-disclosure{
-  margin-top:20px; padding-top:16px; border-top:1px solid var(--navy-700);
+  margin-top:22px; padding-top:18px; border-top:1px solid var(--navy-700);
   font-size:12px; line-height:1.6; color:var(--ink-500);
 }
 .tc-disclosure code{
@@ -296,12 +363,12 @@ hr{ border-color:var(--navy-700); }
 }
 
 @media (max-width:640px){
-  .tc-card{ padding:30px 22px 26px; }
-  .tc-card::after{ left:22px; right:22px; }
-  .tc-card h1{ font-size:23px; }
+  %CARD%{ padding:30px 22px 26px; }
+  %CARD%::after{ left:22px; right:22px; }
+  %CARD% h1{ font-size:23px; }
 }
 </style>
-""".replace("FONT_URL", FONTS)
+""".replace("FONT_URL", FONTS).replace("%CARD%", CARD)
 
 
 # --- favicon -----------------------------------------------------------------------------
@@ -342,17 +409,29 @@ def favicon_links() -> str:
 # --- content that must track the application, not the markup -------------------------------
 
 
+#: A deck is a presentation or its PDF. Supporting material is everything else the
+#: loader reads, plus PDF - research memos and diligence documents arrive that way - but
+#: not a slide deck, which belongs in the deck slot where it is parsed as one.
+DECK_TYPES = tuple(sorted(e.lstrip(".") for e in DECK_EXTENSIONS))
+SUPPORT_TYPES = tuple(sorted(e.lstrip(".") for e in SUPPORTED_EXTENSIONS - {".ppt", ".pptx"}))
+
+
 def deck_formats() -> str:
     """The deck types the ingestion layer actually reads."""
-    return " ".join(sorted(e.lstrip(".") for e in DECK_EXTENSIONS))
+    return " ".join(DECK_TYPES)
 
 
 def support_formats() -> str:
-    return " ".join(sorted(e.lstrip(".") for e in SUPPORTED_EXTENSIONS - DECK_EXTENSIONS))
+    return " ".join(SUPPORT_TYPES)
 
 
-def upload_limit() -> str:
-    return f"up to {max_upload_mb()} MB"
+def upload_limit(megabytes: int | None = None) -> str:
+    """The size ceiling, in words.
+
+    The caller passes the live server limit where it can read one, because that is the
+    number the browser will actually enforce; the configured value is the fallback.
+    """
+    return f"up to {megabytes or max_upload_mb()} MB"
 
 
 def disclosure_html() -> str:
@@ -369,6 +448,11 @@ def disclosure_html() -> str:
     if settings.available and settings.enabled:
         return f"{base} A copy of every generated map is emailed to <code>{settings.default_to}</code>."
     return base
+
+
+def two_tone(lead: str, accent: str) -> str:
+    """The mockup's headline: plain lead, arrow, gradient accent. Pass to card(title=...)."""
+    return f'{lead}<span class="arrow">&rarr;</span><span class="to">{accent}</span>'
 
 
 def md_safe(text: str) -> str:
@@ -405,19 +489,6 @@ def brand(st) -> None:
     )
 
 
-def hero(st, *, eyebrow: str, title_lead: str, title_accent: str, lede: str) -> None:
-    """The headline card: eyebrow, two-tone title, and one line of orientation."""
-    st.markdown(
-        f'<div class="tc-card">'
-        f'<div class="tc-eyebrow">{eyebrow}</div>'
-        f'<h1>{title_lead}<span class="arrow">&rarr;</span>'
-        f'<span class="to">{title_accent}</span></h1>'
-        f'<p class="tc-lede">{lede}</p>'
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-
-
 @contextmanager
 def card(st, *, eyebrow: str = "", title: str = "", lede: str = ""):
     """A TEN Capital card that really contains what is written inside it.
@@ -431,7 +502,12 @@ def card(st, *, eyebrow: str = "", title: str = "", lede: str = ""):
         st.markdown('<span class="tc-card-marker"></span>', unsafe_allow_html=True)
         header = []
         if eyebrow:
-            header.append(f'<div class="tc-eyebrow">{eyebrow}</div>')
+            # With a title above it the eyebrow is a kicker; on its own it is the section
+            # heading, so it is announced as one. It stays a <div> either way: Streamlit's
+            # own heading rules are more specific than anything a class here can say, and
+            # an <h2> would come out at 36px in the brand's 11px eyebrow face.
+            role = "" if title else ' role="heading" aria-level="2"'
+            header.append(f'<div class="tc-eyebrow"{role}>{eyebrow}</div>')
         if title:
             header.append(f"<h1>{title}</h1>")
         if lede:
@@ -439,6 +515,20 @@ def card(st, *, eyebrow: str = "", title: str = "", lede: str = ""):
         if header:
             st.markdown("".join(header), unsafe_allow_html=True)
         yield
+
+
+def hint(st, limit_mb: int | None = None) -> None:
+    """The mockup's dropzone sub-line: what the parsers read, and the real size ceiling.
+
+    Streamlit prints its own copy of this inside every dropzone; the stylesheet hides it so
+    the page says it once, in the mockup's typography, from the values the app itself uses.
+    """
+    st.markdown(
+        f'<p class="tc-hint">deck <b>{deck_formats()}</b>'
+        f"&nbsp;&middot;&nbsp; material <b>{support_formats()}</b>"
+        f"&nbsp;&middot;&nbsp; {upload_limit(limit_mb)} per file</p>",
+        unsafe_allow_html=True,
+    )
 
 
 def disclosure(st) -> None:

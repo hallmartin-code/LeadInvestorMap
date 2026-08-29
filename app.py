@@ -337,23 +337,6 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
     _check_password(st)
 
     theme.brand(st)
-    theme.hero(
-        st,
-        eyebrow="Lead Investor Map",
-        title_lead="Pitch Deck",
-        title_accent="Who Can Lead This Round",
-        lede=(
-            "Upload a deck and whatever investor material exists. You get a one-page PDF "
-            "naming who can realistically lead, who can only follow, and in what order to "
-            "approach them. Nothing is invented: what the sources do not establish is "
-            "shown as NOT PROVIDED."
-        ),
-    )
-    if not anthropic_key() and llm_provider() == "anthropic":
-        st.warning(
-            "No ANTHROPIC_API_KEY is configured, so the analysis will fall back to "
-            "rule-based extraction. Set the key in your environment or Railway variables."
-        )
 
     with st.sidebar:
         st.header("Run settings")
@@ -405,26 +388,51 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
         circled = st.text_input("Amount circled", placeholder="$500k")
         target_close = st.text_input("Target close date", placeholder="October 2026")
 
-    deck_column, support_column = st.columns(2, gap="large")
-    with deck_column:
-        deck_file = st.file_uploader(
-            "Pitch deck - required",
-            type=["pdf", "pptx", "ppt"],
-            accept_multiple_files=False,
-        )
-    with support_column:
-        support_files = st.file_uploader(
-            "Investor material - optional",
-            type=["csv", "xlsx", "xlsm", "docx", "md", "txt", "pdf"],
-            accept_multiple_files=True,
-            help=(
-                "Target lists, CRM exports, meeting notes, investor research. Without these "
-                "there is no pipeline to map, only the round parameters."
-            ),
-        )
+    # One card, as the mockup draws it: headline, both dropzones, the button and the
+    # disclosure inside a single raised surface rather than floating on the ground.
+    with theme.card(
+        st,
+        eyebrow="Lead Investor Map",
+        title=theme.two_tone("Pitch Deck", "Who Can Lead This Round"),
+        lede=(
+            "Upload a deck and whatever investor material exists. You get a one-page PDF "
+            "naming who can realistically lead, who can only follow, and in what order to "
+            "approach them. Nothing is invented: what the sources do not establish is "
+            "shown as NOT PROVIDED."
+        ),
+    ):
+        deck_column, support_column = st.columns(2, gap="large")
+        with deck_column:
+            deck_file = st.file_uploader(
+                "Pitch deck - required",
+                type=list(theme.DECK_TYPES),
+                accept_multiple_files=False,
+            )
+        with support_column:
+            support_files = st.file_uploader(
+                "Investor material - optional",
+                type=list(theme.SUPPORT_TYPES),
+                accept_multiple_files=True,
+                help=(
+                    "Target lists, CRM exports, meeting notes, investor research. Without "
+                    "these there is no pipeline to map, only the round parameters."
+                ),
+            )
+        theme.hint(st, st.get_option("server.maxUploadSize"))
 
-    build = st.button("Generate the Lead Investor Map", type="primary", disabled=deck_file is None)
-    theme.disclosure(st)
+        build = st.button(
+            "Generate the Lead Investor Map",
+            type="primary",
+            width="stretch",
+            disabled=deck_file is None,
+        )
+        theme.disclosure(st)
+
+    if not anthropic_key() and llm_provider() == "anthropic":
+        st.warning(
+            "No ANTHROPIC_API_KEY is configured, so the analysis will fall back to "
+            "rule-based extraction. Set the key in your environment or Railway variables."
+        )
     if not build:
         theme.footer(st)
         st.stop()
@@ -499,94 +507,96 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
     elif send_email:
         st.info(result.email.summary())
 
-    st.subheader("Lead candidates")
-    if analysis.lead_shortlist:
-        st.dataframe(
-            [
-                {
-                    "#": entry.rank,
-                    "Investor": entry.investor_name,
-                    "Lead confidence": entry.lead_confidence.value,
-                    "Cheque": entry.check_display,
-                    "Lead evidence": entry.lead_evidence,
-                    "Relationship": entry.relationship,
-                    "Next step": f"{entry.required_next_step} ({entry.next_step_owner})",
-                }
-                for entry in analysis.lead_shortlist
-            ],
-            width="stretch",
-            hide_index=True,
-        )
-    else:
-        st.info(
-            "No prospect met the lead standard on the evidence supplied. See the fallback "
-            "structures in the JSON."
-        )
+    with theme.card(st, eyebrow="Lead candidates"):
+        if analysis.lead_shortlist:
+            st.dataframe(
+                [
+                    {
+                        "#": entry.rank,
+                        "Investor": entry.investor_name,
+                        "Confidence": entry.lead_confidence.value,
+                        "Cheque": entry.check_display,
+                        "Evidence": entry.lead_evidence,
+                        "Relationship": entry.relationship,
+                        "Next step": f"{entry.required_next_step} ({entry.next_step_owner})",
+                    }
+                    for entry in analysis.lead_shortlist
+                ],
+                width="stretch",
+                hide_index=True,
+            )
+        else:
+            st.info(
+                "No prospect met the lead standard on the evidence supplied. See the "
+                "fallback structures in the JSON."
+            )
 
-    left, right = st.columns(2)
-    with left:
-        st.subheader("Momentum")
+    left, right = st.columns(2, gap="large")
+    with left, theme.card(st, eyebrow="Momentum"):
         pull = analysis.highest_pull_commitment
         st.write(
-            f"**Highest pull:** {pull.investor_name or 'NOT ESTABLISHED'} ({pull.confidence} confidence)"
+            f"**Highest pull:** {pull.investor_name or 'NOT ESTABLISHED'} "
+            f"({pull.confidence} confidence)"
         )
         st.caption(theme.md_safe(pull.rationale))
         for step in analysis.momentum_sequence:
             st.write(f"{step.step}. {step.investor_name} - {step.event}")
-    with right:
-        st.subheader("Disqualified as leads")
+    with right, theme.card(st, eyebrow="Disqualified as leads"):
         for item in analysis.disqualified_as_leads[:10]:
             st.write(f"- {theme.md_safe(item.display())}")
 
-    st.subheader("Outreach sequence")
     sequence = analysis.outreach_sequence
     if sequence:
-        for phase in (
-            sequence.phase_1,
-            sequence.phase_2,
-            sequence.phase_3,
-            sequence.phase_4,
-            sequence.hold_back,
-        ):
-            names = ", ".join(phase.investors) or "none identified"
-            st.write(f"**{phase.phase}** - {theme.md_safe(names)}")
-            st.caption(phase.objective)
+        with theme.card(st, eyebrow="Outreach sequence"):
+            for phase in (
+                sequence.phase_1,
+                sequence.phase_2,
+                sequence.phase_3,
+                sequence.phase_4,
+                sequence.hold_back,
+            ):
+                names = ", ".join(phase.investors) or "none identified"
+                st.write(f"**{phase.phase}** - {theme.md_safe(names)}")
+                st.caption(phase.objective)
 
-    st.subheader("Downloads")
-    download_columns = st.columns(4)
-    if result.pdf_path and Path(result.pdf_path).exists():
-        download_columns[0].download_button(
-            "One-page PDF",
-            Path(result.pdf_path).read_bytes(),
-            file_name=Path(result.pdf_path).name,
-            mime="application/pdf",
+    with theme.card(st, eyebrow="Downloads"):
+        download_columns = st.columns(4)
+        if result.pdf_path and Path(result.pdf_path).exists():
+            download_columns[0].download_button(
+                "One-page PDF",
+                Path(result.pdf_path).read_bytes(),
+                file_name=Path(result.pdf_path).name,
+                mime="application/pdf",
+                width="stretch",
+            )
+        if result.json_path:
+            download_columns[1].download_button(
+                "Analysis JSON",
+                Path(result.json_path).read_bytes(),
+                file_name=Path(result.json_path).name,
+                mime="application/json",
+                width="stretch",
+            )
+        if result.sources_path:
+            download_columns[2].download_button(
+                "Sources JSON",
+                Path(result.sources_path).read_bytes(),
+                file_name=Path(result.sources_path).name,
+                mime="application/json",
+                width="stretch",
+            )
+        if result.csv_path:
+            download_columns[3].download_button(
+                "Prospects CSV",
+                Path(result.csv_path).read_bytes(),
+                file_name=Path(result.csv_path).name,
+                mime="text/csv",
+                width="stretch",
+            )
+        st.caption(
+            "Download anything you need now: the server filesystem is ephemeral, so these "
+            "files are not kept after the session."
         )
-    if result.json_path:
-        download_columns[1].download_button(
-            "Analysis JSON",
-            Path(result.json_path).read_bytes(),
-            file_name=Path(result.json_path).name,
-            mime="application/json",
-        )
-    if result.sources_path:
-        download_columns[2].download_button(
-            "Sources JSON",
-            Path(result.sources_path).read_bytes(),
-            file_name=Path(result.sources_path).name,
-            mime="application/json",
-        )
-    if result.csv_path:
-        download_columns[3].download_button(
-            "Prospects CSV",
-            Path(result.csv_path).read_bytes(),
-            file_name=Path(result.csv_path).name,
-            mime="text/csv",
-        )
-
-    st.caption(
-        "Download anything you need now: the server filesystem is ephemeral, so these "
-        "files are not kept after the session."
-    )
     theme.footer(st)
 
 

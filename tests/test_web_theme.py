@@ -28,14 +28,53 @@ def test_advertised_deck_formats_match_the_parsers():
 
 
 def test_advertised_support_formats_match_the_parsers():
+    """Supporting material is anything the loader reads that is not a slide deck.
+
+    PDF appears in both slots: a deck arrives as one, and so do research and diligence
+    documents. Only .ppt and .pptx are deck-only, because nothing else is a presentation.
+    """
     advertised = set(theme.support_formats().split())
-    supported = {e.lstrip(".") for e in SUPPORTED_EXTENSIONS - DECK_EXTENSIONS}
+    supported = {e.lstrip(".") for e in SUPPORTED_EXTENSIONS - {".ppt", ".pptx"}}
     assert advertised == supported
+    assert advertised <= {e.lstrip(".") for e in SUPPORTED_EXTENSIONS}
+
+
+def test_the_uploaders_offer_exactly_what_is_advertised():
+    """The type= lists and the sub-line come from one place, so they cannot drift apart."""
+    assert set(theme.DECK_TYPES) == set(theme.deck_formats().split())
+    assert set(theme.SUPPORT_TYPES) == set(theme.support_formats().split())
+    assert set(theme.DECK_TYPES) == {e.lstrip(".") for e in DECK_EXTENSIONS}
 
 
 def test_the_upload_limit_tracks_configuration(monkeypatch):
     monkeypatch.setenv("MAX_UPLOAD_MB", "32")
     assert theme.upload_limit() == "up to 32 MB"
+
+
+def test_the_upload_limit_prefers_the_live_server_ceiling(monkeypatch):
+    """The browser enforces the server's limit, so that number wins over the env var."""
+    monkeypatch.setenv("MAX_UPLOAD_MB", "32")
+    assert theme.upload_limit(64) == "up to 64 MB"
+
+
+def test_the_hint_states_the_formats_and_the_ceiling():
+    captured: list[str] = []
+
+    class _Stub:
+        def markdown(self, body, **_kwargs):
+            captured.append(body)
+
+    theme.hint(_Stub(), 64)
+    assert captured
+    for extension in set(theme.DECK_TYPES) | set(theme.SUPPORT_TYPES):
+        assert extension in captured[0]
+    assert "64 MB" in captured[0]
+
+
+def test_the_card_selector_is_substituted_into_the_stylesheet():
+    """A leftover placeholder would silently unstyle every card on the page."""
+    assert "%CARD%" not in theme.CSS
+    assert theme.CARD in theme.CSS
 
 
 def test_the_disclosure_promises_email_only_when_email_is_on(monkeypatch):
