@@ -16,8 +16,8 @@ the old ones, and use the new values everywhere below.
 
 Set a spend limit on the key while you are there. This app calls the model up to four
 times per analysis and costs roughly **$0.10–$0.25 per deck** at Opus pricing; an
-unattended public URL is the only realistic way to run up a surprising bill, and the
-password gate below closes that hole.
+unattended public URL is the only realistic way to run up a surprising bill, and this
+app has no access gate - the spend limit is what closes that hole.
 
 ---
 
@@ -59,7 +59,6 @@ railway variables \
   --set "ANTHROPIC_API_KEY=sk-ant-api03-YOUR-ROTATED-KEY" \
   --set "ANTHROPIC_MODEL=claude-opus-5" \
   --set "LLM_PROVIDER=anthropic" \
-  --set "APP_PASSWORD=choose-a-long-random-passphrase" \
   --set "MAX_UPLOAD_MB=64" \
   --set "PAGE_SIZE=letter" \
   --set "ENABLE_PUBLIC_RESEARCH=false" \
@@ -73,7 +72,6 @@ railway variables \
 | `ANTHROPIC_API_KEY` | **Yes** | Without it the app still runs, but falls back to rule-based extraction and says so on screen |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-opus-5` |
 | `LLM_PROVIDER` | No | `anthropic` (default), `openai`, or `local` |
-| `APP_PASSWORD` | **Yes in production** | The app *refuses to serve* on Railway without one — see below |
 | `MAX_UPLOAD_MB` | No | Upload ceiling. Image-heavy decks run past 50 MB |
 | `PAGE_SIZE` | No | `letter` or `a4` |
 | `ENABLE_PUBLIC_RESEARCH` | No | Leave off unless you also set a search backend key |
@@ -83,13 +81,11 @@ railway variables \
 | `ENABLE_EMAIL` | No | Set `false` to suppress all email without removing the key |
 | `PORT` | No | Injected by Railway; do not set it yourself |
 
-### The password gate is not optional
+### There is no access gate
 
-A public Streamlit URL with your key behind it is a machine that converts strangers into
-Anthropic charges. The app therefore detects that it is running on a hosting platform
-(via `RAILWAY_ENVIRONMENT` and friends) and, if `APP_PASSWORD` is unset, shows an error
-and stops instead of serving the upload form. Set the password before your first deploy
-and you will never see that screen.
+The app has no password. Anyone who has the URL can upload a deck and run an analysis, and
+every analysis spends Anthropic credit on your key. Treat the URL itself as the secret:
+do not publish it, and set the limits under **Cost control** below.
 
 ---
 
@@ -101,7 +97,7 @@ Dashboard → Settings → Networking → **Generate Domain**, or:
 railway domain
 ```
 
-Open the URL, enter the password, upload a deck, and press **Build the map**.
+Open the URL, upload a deck, and press **Build the map**.
 
 ---
 
@@ -114,7 +110,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://YOUR-APP.up.railway.app/_stcore
 
 Then, in the browser:
 
-1. The password screen appears — the gate is live.
+1. The upload card appears, branded, with both dropzones.
 2. Upload `sample_data/helios_diagnostics_deck.pdf` plus the CSV and notes files.
 3. The run finishes with lead candidates and a downloadable one-page PDF.
 4. The sidebar shows **Analysis engine: anthropic** with no key warning at the top.
@@ -182,7 +178,6 @@ Worth doing once before you deploy, because it exercises the exact image Railway
 docker build -t lead-investor-map .
 docker run --rm -p 8501:8501 \
   -e ANTHROPIC_API_KEY="sk-ant-api03-YOUR-ROTATED-KEY" \
-  -e APP_PASSWORD="local-test" \
   lead-investor-map
 # open http://localhost:8501
 ```
@@ -192,8 +187,8 @@ docker run --rm -p 8501:8501 \
 ## Cost control
 
 - Set a monthly spend limit on the Anthropic key.
-- Keep `APP_PASSWORD` set, and share it only with people who should be spending the
-  budget.
+- Share the URL only with people who should be spending the budget. There is no
+  password, so the URL is the only thing between a stranger and your key.
 - For bulk or experimental runs, use the CLI with `--no-llm`: the tiering, ranking,
   sequencing and one-page PDF all work with zero API spend.
-- Rotate the key if the URL or the password is ever shared more widely than intended.
+- Rotate the key if the URL is ever shared more widely than intended.

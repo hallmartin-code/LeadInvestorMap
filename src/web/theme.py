@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from ..ingestion.loader import DECK_EXTENSIONS, SUPPORTED_EXTENSIONS
 from ..utils.config import EmailSettings, max_upload_mb
@@ -44,6 +45,22 @@ BRAND_MARK = """
   <circle cx="22" cy="68" r="11" fill="var(--coral)"/>
 </svg>
 """
+
+#: The uploader labels. Streamlit copies a widget's label onto its dropzone as an
+#: aria-label, which is the only per-zone hook the stylesheet has - so the label the app
+#: passes and the selector that dresses that zone have to come from one place.
+DECK_LABEL = "Pitch deck - PDF or PowerPoint, required"
+SUPPORT_LABEL = "Investor material - optional"
+
+#: The document glyph from the mockup's dropzone, as a background image. Percent-encoded
+#: rather than written by hand so the file stays ASCII and the quoting stays correct.
+UPLOAD_ICON = quote(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+    'stroke="#F3F6FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M14 3v4a1 1 0 0 0 1 1h4"/>'
+    '<path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>',
+    safe="",
+)
 
 #: A Streamlit widget cannot live inside an injected <div>, so the card is a bordered
 #: st.container matched by a marker inside it. The selector is written once here and
@@ -191,8 +208,57 @@ h1 .to{
   border:1.5px dashed var(--navy-700);
   border-radius:14px;
   background:rgba(255,255,255,0.015);
-  padding:24px 22px;
-  transition:border-color .18s ease, background .18s ease;
+  padding:30px 24px;
+  transition:border-color .18s ease, background .18s ease, transform .18s ease;
+  /* The mockup stacks an icon, a line of instruction and the control, centred. */
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:0;
+}
+[data-testid="stFileUploaderDropzone"]:active{ transform:scale(0.997); }
+
+/* The icon tile and the instruction are the mockup's, drawn on the zone itself: Streamlit
+   owns the markup inside a dropzone, so there is nowhere to put real elements. They are
+   decoration - the accessible name is the widget label above - and they step aside once a
+   file is chosen and the chips need the room. */
+[data-testid="stFileUploaderDropzone"]:not(:has([data-testid="stFileChips"]))::before{
+  content:"";
+  order:-2;
+  width:38px; height:38px;
+  /* Streamlit stretches the zone's children, so a fixed-width tile has to centre itself
+     rather than rely on align-items. */
+  margin:0 auto 14px;
+  border-radius:10px;
+  border:1px solid var(--navy-700);
+  background:
+    url("data:image/svg+xml,%UPLOAD_ICON%") center / 18px 18px no-repeat,
+    linear-gradient(135deg, rgba(238,90,78,0.16), rgba(243,162,42,0.16));
+}
+[data-testid="stFileUploaderDropzone"]:not(:has([data-testid="stFileChips"]))::after{
+  order:-1;
+  margin-bottom:12px;
+  font-family:'Inter', sans-serif;
+  font-size:15px; font-weight:600; line-height:1.4;
+  color:var(--ink-100);
+  content:"Click to choose a file";
+}
+[data-testid="stFileUploaderDropzone"][aria-label="%DECK_LABEL%"]:not(
+  :has([data-testid="stFileChips"]))::after{
+  content:"Click to choose a deck";
+}
+[data-testid="stFileUploaderDropzone"][aria-label="%SUPPORT_LABEL%"]:not(
+  :has([data-testid="stFileChips"]))::after{
+  content:"Click to add investor material";
+}
+/* The deck is what the page is for; the material is an optional refinement, so its zone
+   is quieter and shorter rather than a second thing of equal weight. */
+[data-testid="stFileUploaderDropzone"][aria-label="%SUPPORT_LABEL%"]{ padding:20px 24px; }
+[data-testid="stFileUploaderDropzone"][aria-label="%SUPPORT_LABEL%"]::before{
+  width:30px; height:30px; margin-bottom:10px; background-size:15px 15px;
+}
+[data-testid="stFileUploaderDropzone"][aria-label="%SUPPORT_LABEL%"]::after{
+  font-size:14px; font-weight:500; color:var(--ink-300);
 }
 [data-testid="stFileUploaderDropzone"]:hover{
   border-color:var(--teal);
@@ -221,7 +287,8 @@ h1 .to{
 .tc-hint{
   font-family:'JetBrains Mono', monospace !important;
   font-size:11.5px; letter-spacing:0.01em; color:var(--ink-500);
-  margin:10px 2px 0;
+  /* It belongs to the zone above it, and must not crowd whatever follows. */
+  margin:10px 2px 18px;
 }
 .tc-hint b{ color:var(--ink-300); font-weight:500; }
 
@@ -237,13 +304,17 @@ h1 .to{
   font-family:'Sora', sans-serif; font-weight:700; font-size:15px;
   transition:filter .15s ease, transform .15s ease;
 }
-.stButton > button[kind="primary"]{
+.stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"]{
   background:linear-gradient(90deg, var(--coral) 0%, var(--coral-soft) 45%, var(--amber) 100%);
   color:#17130E;
   box-shadow:0 10px 24px -10px rgba(238,90,78,0.45);
 }
-.stButton > button[kind="primary"]:hover{ filter:brightness(1.06); transform:translateY(-1px); }
-.stButton > button[kind="primary"]:active{ transform:translateY(0); }
+.stButton > button[kind="primary"]:hover,
+.stDownloadButton > button[kind="primary"]:hover{
+  filter:brightness(1.06); transform:translateY(-1px);
+}
+.stButton > button[kind="primary"]:active,
+.stDownloadButton > button[kind="primary"]:active{ transform:translateY(0); }
 /* The button is disabled until a deck is chosen. The gradient reads as "ready", so it
    has to be visibly withdrawn or the page invites a click it will refuse. */
 .stButton > button[kind="primary"]:disabled,
@@ -255,17 +326,20 @@ h1 .to{
   transform:none;
   cursor:not-allowed;
 }
-.stButton > button[kind="primary"]:focus-visible,
+.stButton > button:focus-visible,
 .stDownloadButton > button:focus-visible{
   outline:2px solid var(--teal); outline-offset:2px;
 }
-.stButton > button[kind="secondary"], .stDownloadButton > button{
+.stButton > button[kind="secondary"],
+.stDownloadButton > button[kind="secondary"]{
   background:rgba(255,255,255,0.03);
   border:1px solid var(--navy-700);
   color:var(--ink-100);
   font-size:13px;
 }
-.stDownloadButton > button:hover{ border-color:var(--teal); filter:brightness(1.08); }
+.stDownloadButton > button[kind="secondary"]:hover{
+  border-color:var(--teal); filter:brightness(1.08);
+}
 
 /* --- sidebar ----------------------------------------------------------------------- */
 
@@ -368,7 +442,14 @@ hr{ border-color:var(--navy-700); }
   %CARD% h1{ font-size:23px; }
 }
 </style>
-""".replace("FONT_URL", FONTS).replace("%CARD%", CARD)
+"""
+CSS = (
+    CSS.replace("FONT_URL", FONTS)
+    .replace("%CARD%", CARD)
+    .replace("%UPLOAD_ICON%", UPLOAD_ICON)
+    .replace("%DECK_LABEL%", DECK_LABEL)
+    .replace("%SUPPORT_LABEL%", SUPPORT_LABEL)
+)
 
 
 # --- favicon -----------------------------------------------------------------------------
@@ -517,15 +598,15 @@ def card(st, *, eyebrow: str = "", title: str = "", lede: str = ""):
         yield
 
 
-def hint(st, limit_mb: int | None = None) -> None:
-    """The mockup's dropzone sub-line: what the parsers read, and the real size ceiling.
+def hint(st, formats: str, limit_mb: int | None = None) -> None:
+    """The mockup's dropzone sub-line: what this zone reads, and the real size ceiling.
 
-    Streamlit prints its own copy of this inside every dropzone; the stylesheet hides it so
-    the page says it once, in the mockup's typography, from the values the app itself uses.
+    Streamlit prints its own copy of this inside every dropzone and truncates the longer
+    list to an ellipsis; the stylesheet hides that one so the formats are stated in full,
+    in the mockup's typography, from the values the app itself uses.
     """
     st.markdown(
-        f'<p class="tc-hint">deck <b>{deck_formats()}</b>'
-        f"&nbsp;&middot;&nbsp; material <b>{support_formats()}</b>"
+        f'<p class="tc-hint"><b>{formats}</b>'
         f"&nbsp;&middot;&nbsp; {upload_limit(limit_mb)} per file</p>",
         unsafe_allow_html=True,
     )

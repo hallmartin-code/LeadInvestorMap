@@ -7,6 +7,7 @@ money is never mangled on its way to the browser.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from src.ingestion.loader import DECK_EXTENSIONS, SUPPORTED_EXTENSIONS
 from src.web import theme
@@ -58,17 +59,32 @@ def test_the_upload_limit_prefers_the_live_server_ceiling(monkeypatch):
 
 
 def test_the_hint_states_the_formats_and_the_ceiling():
-    captured: list[str] = []
+    """One sub-line per zone: the formats that zone reads, and the real ceiling."""
 
     class _Stub:
-        def markdown(self, body, **_kwargs):
-            captured.append(body)
+        def __init__(self) -> None:
+            self.captured: list[str] = []
 
-    theme.hint(_Stub(), 64)
-    assert captured
-    for extension in set(theme.DECK_TYPES) | set(theme.SUPPORT_TYPES):
-        assert extension in captured[0]
-    assert "64 MB" in captured[0]
+        def markdown(self, body, **_kwargs):
+            self.captured.append(body)
+
+    deck = _Stub()
+    theme.hint(deck, theme.deck_formats(), 64)
+    assert deck.captured and "64 MB" in deck.captured[0]
+    for extension in theme.DECK_TYPES:
+        assert extension in deck.captured[0]
+
+    support = _Stub()
+    theme.hint(support, theme.support_formats(), 64)
+    for extension in theme.SUPPORT_TYPES:
+        assert extension in support.captured[0]
+
+
+def test_the_deck_label_names_the_formats_a_deck_arrives_in():
+    """The page is fed pitch decks; the label says what a deck may be before it is opened."""
+    assert "PDF" in theme.DECK_LABEL
+    assert "PowerPoint" in theme.DECK_LABEL
+    assert {"pdf", "ppt", "pptx"} <= set(theme.DECK_TYPES)
 
 
 def test_the_card_selector_is_substituted_into_the_stylesheet():
@@ -120,3 +136,21 @@ def test_the_brand_mark_is_labelled_for_screen_readers():
 def test_body_type_never_drops_below_a_readable_size():
     sizes = [float(m) for m in re.findall(r"font-size:(\d+(?:\.\d+)?)px", theme.CSS)]
     assert sizes and min(sizes) >= 10.0
+
+
+def test_the_dropzone_dressing_matches_the_labels_the_app_passes():
+    """The zone's instruction is drawn by a selector keyed to its aria-label, which is the
+    widget label. If the two ever drift, the zone silently loses its instruction."""
+    for label in (theme.DECK_LABEL, theme.SUPPORT_LABEL):
+        assert f'aria-label="{label}"' in theme.CSS
+    app_source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "theme.DECK_LABEL" in app_source
+    assert "theme.SUPPORT_LABEL" in app_source
+    assert '"Pitch deck - required"' not in app_source, "the label must come from theme"
+
+
+def test_the_upload_icon_is_embedded_rather_than_fetched():
+    """A dropzone icon that depends on the network is a dropzone icon that sometimes
+    is not there."""
+    assert "data:image/svg+xml," in theme.CSS
+    assert "%3Csvg" in theme.CSS

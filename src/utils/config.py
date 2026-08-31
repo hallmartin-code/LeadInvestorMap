@@ -121,18 +121,6 @@ def max_upload_mb() -> int:
         return 64
 
 
-# --- web app ---------------------------------------------------------------------------
-
-
-def app_password() -> str | None:
-    """Shared secret gating the web app.
-
-    Unset means the app is open to anyone who has the URL - acceptable on localhost, and
-    an expensive mistake in production, because every visitor would spend API credit.
-    """
-    return (os.getenv("APP_PASSWORD") or "").strip() or None
-
-
 # --- email notifications ------------------------------------------------------------------
 
 #: Every generation is reported here unless REPORT_EMAIL_TO overrides it.
@@ -178,17 +166,6 @@ def _int_env(name: str, default: int) -> int:
         return max(1, int(os.getenv(name) or default))
     except ValueError:
         return default
-
-
-def is_public_deployment() -> bool:
-    """True when running on a hosting platform rather than a developer's machine."""
-    return bool(
-        os.getenv("RAILWAY_ENVIRONMENT")
-        or os.getenv("RAILWAY_PROJECT_ID")
-        or os.getenv("RENDER")
-        or os.getenv("FLY_APP_NAME")
-        or os.getenv("DYNO")
-    )
 
 
 # --- extraction tunables ---------------------------------------------------------------

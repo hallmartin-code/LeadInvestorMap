@@ -59,7 +59,6 @@ Copy `.env.example` to `.env` and fill in what you need. Nothing is required to 
 | `ENABLE_PUBLIC_RESEARCH` | `false` | Turn on public investor research |
 | `RESEARCH_BACKEND` | `none` | `brave` or `serper`; each needs its own key |
 | `BRAVE_API_KEY` / `SERPER_API_KEY` | - | Search backend credentials |
-| `APP_PASSWORD` | - | Shared password for the web app. **Required in production** - the app refuses to serve on a hosting platform without one |
 | `RESEND_API_KEY` | - | Turns on result emails. Without it the app generates normally and reports `Email skipped` |
 | `REPORT_EMAIL_TO` | `Info@tencapital.group` | Where each completed run is sent |
 | `RESEND_FROM` | `TEN Capital <reports@tencapital.group>` | Must be on a domain verified in Resend |
@@ -194,14 +193,13 @@ The app ships as a single Streamlit service in a Docker container, ready for Rai
 
 ```bash
 railway init && railway up
-railway variables --set "ANTHROPIC_API_KEY=..." --set "APP_PASSWORD=..."
+railway variables --set "ANTHROPIC_API_KEY=..."
 railway domain
 ```
 
-[DEPLOY.md](DEPLOY.md) has the full walkthrough: variables, the healthcheck, cost control,
-and why the password gate is not optional. In short - a public URL with your API key
-behind it converts strangers into Anthropic charges, so the app refuses to serve on a
-hosting platform unless `APP_PASSWORD` is set.
+[DEPLOY.md](DEPLOY.md) has the full walkthrough: variables, the healthcheck and cost
+control. There is no access gate - anyone with the URL can run an analysis, and every
+analysis spends Anthropic credit on your key, so treat the URL itself as the secret.
 
 Deployment files: `Dockerfile`, `Procfile`, `railway.json`, `.streamlit/config.toml`,
 `.dockerignore`.

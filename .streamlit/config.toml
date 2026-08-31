@@ -4,8 +4,8 @@
 headless = true
 address = "0.0.0.0"
 # Railway terminates TLS at its edge and proxies over HTTP, so Streamlit's own XSRF and
-# CORS checks fight the proxy rather than protecting anything. Access is gated by
-# APP_PASSWORD instead.
+# CORS checks fight the proxy rather than protecting anything. The app has no access gate:
+# anyone with the URL can run it.
 enableCORS = false
 enableXsrfProtection = false
 maxUploadSize = 64

@@ -10,7 +10,6 @@ rendered; otherwise the arguments are parsed and the run happens on the terminal
 from __future__ import annotations
 
 import argparse
-import hmac
 import sys
 from pathlib import Path
 
@@ -24,8 +23,6 @@ from src.utils.config import (
     EmailSettings,
     ExitCode,
     anthropic_key,
-    app_password,
-    is_public_deployment,
     llm_provider,
 )
 from src.utils.logging import configure, get_logger
@@ -281,48 +278,6 @@ def cli(argv: list[str] | None = None) -> int:
 # --- Streamlit ----------------------------------------------------------------------------
 
 
-def _check_password(st) -> bool:  # pragma: no cover - exercised by hand
-    """Gate the app behind APP_PASSWORD.
-
-    Every analysis spends API credit, so an ungated public URL is a standing bill. When no
-    password is set the app runs open on localhost, and refuses to run on a hosting
-    platform rather than quietly serving the world.
-    """
-    secret = app_password()
-
-    if not secret:
-        if is_public_deployment():
-            st.error(
-                "APP_PASSWORD is not set. This app is deployed publicly and every visitor "
-                "would spend your Anthropic credit, so it will not run until you set a "
-                "password in the Railway variables."
-            )
-            st.stop()
-        return True
-
-    if st.session_state.get("authenticated"):
-        return True
-
-    theme.brand(st)
-    with theme.card(
-        st,
-        eyebrow="Restricted",
-        title="Lead Investor Map",
-        lede="Enter the access password to continue.",
-    ):
-        entered = st.text_input("Password", type="password", label_visibility="collapsed")
-    theme.footer(st)
-
-    if not entered:
-        st.stop()
-    if not hmac.compare_digest(entered, secret):
-        st.error("Incorrect password.")
-        st.stop()
-
-    st.session_state["authenticated"] = True
-    return True
-
-
 def streamlit_app() -> None:  # pragma: no cover - exercised by hand
     import tempfile
 
@@ -334,7 +289,6 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
         layout="wide",
     )
     theme.inject(st)
-    _check_password(st)
 
     theme.brand(st)
 
@@ -395,33 +349,37 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
         eyebrow="Lead Investor Map",
         title=theme.two_tone("Pitch Deck", "Who Can Lead This Round"),
         lede=(
-            "Upload a deck and whatever investor material exists. You get a one-page PDF "
-            "naming who can realistically lead, who can only follow, and in what order to "
-            "approach them. Nothing is invented: what the sources do not establish is "
-            "shown as NOT PROVIDED."
+            "Drop in a pitch deck - PDF or PowerPoint - and get back a one-page investor "
+            "PDF naming who can realistically lead this round, who can only follow, and in "
+            "what order to approach them. Nothing is invented: what the deck and your "
+            "material do not establish is shown as NOT PROVIDED."
         ),
     ):
-        deck_column, support_column = st.columns(2, gap="large")
-        with deck_column:
-            deck_file = st.file_uploader(
-                "Pitch deck - required",
-                type=list(theme.DECK_TYPES),
-                accept_multiple_files=False,
-            )
-        with support_column:
-            support_files = st.file_uploader(
-                "Investor material - optional",
-                type=list(theme.SUPPORT_TYPES),
-                accept_multiple_files=True,
-                help=(
-                    "Target lists, CRM exports, meeting notes, investor research. Without "
-                    "these there is no pipeline to map, only the round parameters."
-                ),
-            )
-        theme.hint(st, st.get_option("server.maxUploadSize"))
+        # The deck is the input the page is built around, so it gets the full width and
+        # the first position; investor material sharpens the answer but is not required
+        # to produce the one-pager, and sits below at lower weight.
+        limit_mb = st.get_option("server.maxUploadSize")
+        deck_file = st.file_uploader(
+            theme.DECK_LABEL,
+            type=list(theme.DECK_TYPES),
+            accept_multiple_files=False,
+        )
+        theme.hint(st, theme.deck_formats(), limit_mb)
+
+        support_files = st.file_uploader(
+            theme.SUPPORT_LABEL,
+            type=list(theme.SUPPORT_TYPES),
+            accept_multiple_files=True,
+            help=(
+                "Target lists, CRM exports, meeting notes, investor research. Without "
+                "these the one-pager is built from the deck and the round parameters "
+                "alone, and names fewer lead candidates."
+            ),
+        )
+        theme.hint(st, theme.support_formats(), limit_mb)
 
         build = st.button(
-            "Generate the Lead Investor Map",
+            "Generate one-pager PDF",
             type="primary",
             width="stretch",
             disabled=deck_file is None,
@@ -472,7 +430,7 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
         email_to=email_to if send_email else None,
     )
 
-    with st.spinner("Reading documents, classifying investors, building the map..."):
+    with st.spinner("Reading the deck, classifying investors, building your one-pager..."):
         try:
             result = run(options)
         except Exception as exc:
@@ -482,7 +440,7 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
     analysis = result.analysis
     with theme.card(
         st,
-        eyebrow="Analysis complete",
+        eyebrow="One-pager ready",
         title=analysis.company.display_name,
         lede=analysis.company.one_liner.display(),
     ):
@@ -559,18 +517,23 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
                 st.write(f"**{phase.phase}** - {theme.md_safe(names)}")
                 st.caption(phase.objective)
 
-    with theme.card(st, eyebrow="Downloads"):
-        download_columns = st.columns(4)
+    with theme.card(st, eyebrow="Your one-pager"):
+        # The PDF is what was asked for; the JSON and CSV are working material behind it.
         if result.pdf_path and Path(result.pdf_path).exists():
-            download_columns[0].download_button(
-                "One-page PDF",
+            st.download_button(
+                "Download the one-page PDF",
                 Path(result.pdf_path).read_bytes(),
                 file_name=Path(result.pdf_path).name,
                 mime="application/pdf",
+                type="primary",
                 width="stretch",
             )
+        else:
+            st.error("The one-pager could not be rendered. The JSON below still holds the analysis.")
+
+        working = st.columns(3)
         if result.json_path:
-            download_columns[1].download_button(
+            working[0].download_button(
                 "Analysis JSON",
                 Path(result.json_path).read_bytes(),
                 file_name=Path(result.json_path).name,
@@ -578,7 +541,7 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
                 width="stretch",
             )
         if result.sources_path:
-            download_columns[2].download_button(
+            working[1].download_button(
                 "Sources JSON",
                 Path(result.sources_path).read_bytes(),
                 file_name=Path(result.sources_path).name,
@@ -586,7 +549,7 @@ def streamlit_app() -> None:  # pragma: no cover - exercised by hand
                 width="stretch",
             )
         if result.csv_path:
-            download_columns[3].download_button(
+            working[2].download_button(
                 "Prospects CSV",
                 Path(result.csv_path).read_bytes(),
                 file_name=Path(result.csv_path).name,
