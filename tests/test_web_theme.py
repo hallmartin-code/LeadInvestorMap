@@ -129,8 +129,19 @@ def test_the_stylesheet_carries_no_mojibake():
 
 
 def test_the_brand_mark_is_labelled_for_screen_readers():
-    assert 'role="img"' in theme.BRAND_MARK
-    assert "aria-label" in theme.BRAND_MARK
+    assert 'alt="TEN Capital Network"' in theme.BRAND_MARK
+
+
+def test_the_brand_mark_is_the_official_logo_file():
+    """The logo is the brand's own image, served from ./static - never a redrawn SVG."""
+    from PIL import Image
+
+    assert "<svg" not in theme.BRAND_MARK
+    assert f"/app/static/{theme.LOGO_FILE}" in theme.BRAND_MARK
+    logo = theme.STATIC_DIR / theme.LOGO_FILE
+    with Image.open(logo) as image:
+        assert image.size == (631, 232)
+        assert image.mode == "RGBA"
 
 
 def test_body_type_never_drops_below_a_readable_size():

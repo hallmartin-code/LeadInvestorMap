@@ -30,21 +30,14 @@ FONTS = (
     "family=JetBrains+Mono:wght@400;500&display=swap"
 )
 
-#: The brand mark: three figures, one per accent colour.
-BRAND_MARK = """
-<svg class="tc-mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"
-     role="img" aria-label="TEN Capital Network">
-  <path d="M50 6 C64 6 74 16 74 16" stroke="var(--amber)" stroke-width="11"
-        stroke-linecap="round" fill="none"/>
-  <path d="M76 66 C76 82 63 92 63 92" stroke="var(--teal)" stroke-width="11"
-        stroke-linecap="round" fill="none"/>
-  <path d="M24 66 C24 82 37 92 37 92" stroke="var(--coral)" stroke-width="11"
-        stroke-linecap="round" fill="none" transform="rotate(180 50 79)"/>
-  <circle cx="50" cy="20" r="11" fill="var(--amber)"/>
-  <circle cx="78" cy="68" r="11" fill="var(--teal)"/>
-  <circle cx="22" cy="68" r="11" fill="var(--coral)"/>
-</svg>
-"""
+#: The official TEN Capital Network logo (631x232, transparent), served from ./static.
+#: It is the brand's own file, never a redrawing. Its wordmark is black, and the brand
+#: only allows it on a light ground, so on this navy screen it sits on a white chip.
+LOGO_FILE = "ten_capital_logo.png"
+BRAND_MARK = (
+    '<img class="tc-logo" src="/app/static/ten_capital_logo.png" '
+    'width="631" height="232" alt="TEN Capital Network">'
+)
 
 #: The uploader labels. Streamlit copies a widget's label onto its dropzone as an
 #: aria-label, which is the only per-zone hook the stylesheet has - so the label the app
@@ -120,8 +113,7 @@ CSS = """
 
 /* Streamlit ships its own font rules; these are deliberately specific enough to win
    rather than relying on source order. */
-.stApp h1, .stApp h2, .stApp h3, .stApp h4,
-.stApp .tc-word, .stApp .tc-card h1{
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp .tc-card h1{
   font-family:'Sora', sans-serif !important;
   letter-spacing:-0.01em;
   color:var(--ink-100);
@@ -138,16 +130,15 @@ p, li, label, span, div{ color:var(--ink-300); }
 
 /* --- brand lockup --------------------------------------------------------------- */
 
-.tc-brand{ display:flex; align-items:center; gap:12px; margin:0 0 26px; }
-.tc-mark{ width:34px; height:34px; flex-shrink:0; }
-.tc-word{
-  font-family:'Sora', sans-serif; font-weight:800; font-size:15px;
-  letter-spacing:0.04em; line-height:1.15; color:var(--ink-100); text-transform:uppercase;
+/* The logo's wordmark is black, so it gets the light ground the brand requires. The chip
+   padding is the logo's clear space. 170px keeps it above the 160px on-screen minimum. */
+.tc-brand{
+  display:inline-flex; align-items:center;
+  background:#FFFFFF; border-radius:12px; padding:10px 16px;
+  margin:0 0 26px;
+  box-shadow:0 10px 24px -14px rgba(0,0,0,0.6);
 }
-.tc-word span{
-  display:block; font-weight:600; font-size:10px; letter-spacing:0.22em;
-  color:var(--ink-500); margin-top:2px;
-}
+.tc-logo{ display:block; width:170px; height:auto; }
 
 /* --- card ----------------------------------------------------------------------- */
 
@@ -565,7 +556,7 @@ def inject(st) -> None:
 
 def brand(st) -> None:
     st.markdown(
-        f'<div class="tc-brand">{BRAND_MARK}<div class="tc-word">Ten Capital<span>Network</span></div></div>',
+        f'<div class="tc-brand">{BRAND_MARK}</div>',
         unsafe_allow_html=True,
     )
 
